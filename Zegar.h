@@ -7,10 +7,12 @@
 class Zegar {
 private:
     int sec;
-    int days;         // dni od 01.01.2025
+    int days; // dni od 01.01.2025
 
     int h, m, s;
     int D, M, R;
+
+    int mnoznikCzasu = 1;
 
     std::atomic<bool> dziala;
     std::thread timerThread;
@@ -27,6 +29,9 @@ public:
 
     void start();
     void stop();
+
+    void setMnoznikCzasu(int mnoznik);
+    int getMnoznikCzasu() const;
 
     void ustawCzas(int h, int m, int s, int D, int M, int R);
 
