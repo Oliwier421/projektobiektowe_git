@@ -1,11 +1,8 @@
 #include "Zegar.h"
-#include <iostream>
-#include <iomanip>
 #include <chrono>
 
 Zegar::Zegar(int h_, int m_, int s_, int D_, int M_, int R_)
-    : dziala(false), h(h_), m(m_), s(s_), D(D_), M(M_), R(R_)
-{
+    : dziala(false), h(h_), m(m_), s(s_), D(D_), M(M_), R(R_), mnoznikCzasu(1) {
     sec = time2sec(h, m, s);
     days = date2days(D, M, R);
 }
@@ -14,30 +11,32 @@ Zegar::~Zegar() {
     stop();
 }
 
-void Zegar::liczCzas() {
+void Zegar::liczCzas()
+{
     while (dziala) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
         std::lock_guard<std::mutex> lock(mtx);
 
-        sec++;
-        s++;
-
-        if (s >= 60) {s = 0; m++;}
-        if (m >= 60) {m = 0; h++;}
-        if (h >= 24) {
-            h = 0; sec = 0;
-            days++; D++;
-            bool przestepny = czyPrzestepny(R);
-            switch (M) {
-                case 1: case 3: case 5: case 7: case 8: case 10:
-                    if (D > 31) {D = 1; M++;} break;
-                case 4: case 6: case 9: case 11:
-                    if (D > 30) {D = 1; M++;} break;
-                case 2:
-                    if ((przestepny && D > 29) || (!przestepny && D > 28)) {D = 1; M++;}
-                    break;
-                case 12: if (D > 31) {D = 1; M = 1; R++;}break;
+        for (int i = 0; i < mnoznikCzasu; i++) {
+            sec++;
+            s++;
+            if (s >= 60) {s = 0; m++;}
+            if (m >= 60) {m = 0; h++;}
+            if (h >= 24) {
+                h = 0; sec = 0;
+                days++; D++;
+                bool przestepny = czyPrzestepny(R);
+                switch (M) {
+                    case 1: case 3: case 5: case 7: case 8: case 10:
+                        if (D > 31) {D = 1; M++;} break;
+                    case 4: case 6: case 9: case 11:
+                        if (D > 30) {D = 1; M++;} break;
+                    case 2:
+                        if ((przestepny && D > 29) || (!przestepny && D > 28)) {D = 1; M++;}
+                        break;
+                    case 12: if (D > 31) {D = 1; M = 1; R++;} break;
+                }
             }
         }
     }
@@ -54,28 +53,38 @@ void Zegar::stop() {
     if (timerThread.joinable()) timerThread.join();
 }
 
+void Zegar::setMnoznikCzasu(int mnoznik) {
+    std::lock_guard<std::mutex> lock(mtx);
+    if (mnoznik < 1) mnoznik = 1;
+    mnoznikCzasu = mnoznik;
+}
+
+int Zegar::getMnoznikCzasu() const {
+    std::lock_guard<std::mutex> lock(mtx);
+    return mnoznikCzasu;
+}
 
 void Zegar::ustawCzas(int h_, int m_, int s_, int D_, int M_, int R_) {
     std::lock_guard<std::mutex> lock(mtx);
-    h = h_; m = m_; s = s_; D = D_; M = M_; R = R_;
+    h = h_; m = m_; s = s_;
+    D = D_; M = M_; R = R_;
 
     sec = time2sec(h, m, s);
     days = date2days(D, M, R);
 }
-
 
 bool Zegar::czyPrzestepny(int rok) const {return (rok % 4 == 0);}
 
 int Zegar::time2sec(int h, int m, int s) const {return s + 60 * m + 3600 * h;}
 
 int Zegar::date2days(int dzien, int miesiac, int rok) const {
-    int dniWMiesiacach[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+    int dniWMiesiacach[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     if (czyPrzestepny(rok)) dniWMiesiacach[1] = 29;
     int startRok = 2025;
     int licznik = 0;
 
-    for (int r = startRok; r < rok; r++) {licznik += czyPrzestepny(r) ? 366 : 365;}
-    for (int m = 0; m < miesiac - 1; m++) {licznik += dniWMiesiacach[m];}
+    for (int r = startRok; r < rok; r++) licznik += czyPrzestepny(r) ? 366 : 365;
+    for (int mies = 0; mies < miesiac - 1; mies++) licznik += dniWMiesiacach[mies];
     licznik += dzien;
 
     return licznik;
@@ -93,7 +102,7 @@ std::string Zegar::days2date(int dni) const {
     int dniWMiesiacach[] = {31,28,31,30,31,30,31,31,30,31,30,31};
 
     int Rok = 2025;
-    // odejmowanie pe³nych lat
+    // odejmowanie peÂ³nych lat
     while (true) {
         int dniWRoku = czyPrzestepny(Rok) ? 366 : 365;
         if (dni > dniWRoku) {
@@ -107,7 +116,7 @@ std::string Zegar::days2date(int dni) const {
         dniWMiesiacach[1] = 29;
 
     int Mies = 1;
-    // odejmowanie pe³nych miesiêcy
+    // odejmowanie peÂ³nych miesiÃªcy
     while (dni > dniWMiesiacach[Mies - 1]) {
         dni -= dniWMiesiacach[Mies - 1];
         Mies++;
